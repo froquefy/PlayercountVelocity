@@ -43,32 +43,51 @@ final class Database implements AutoCloseable {
         this.serversTable = config.tablePrefix() + "servers";
 
         HikariConfig hc = new HikariConfig();
-        hc.setPoolName("PlayerCount-Hikari");
+        hc.setPoolName("playercount-mysql");
         hc.setJdbcUrl(buildJdbcUrl(config));
         hc.setUsername(config.username());
         hc.setPassword(config.password());
         hc.setDriverClassName("com.mysql.cj.jdbc.Driver");
-        hc.setMaximumPoolSize(config.poolMaxSize());
+        hc.setMaximumPoolSize(config.poolSize());
         hc.setMinimumIdle(0);
-        hc.setConnectionTimeout(10_000);
+        hc.setConnectionTimeout(config.connectionTimeoutMs());
         hc.setIdleTimeout(60_000);
-        hc.setMaxLifetime(600_000);
-        // The single most important setting for this plugin: never validate a
-        // connection at pool construction. A negative value makes the pool start
-        // immediately and connect lazily, so an unreachable MySQL at boot can
-        // neither block nor fail proxy startup.
+        hc.setMaxLifetime(1_800_000);          // 30 min, comfortably under MySQL's default wait_timeout
+        hc.setLeakDetectionThreshold(30_000);  // log the stack of any connection held > 30s
+        // The one place we deliberately differ from the fail-loud-on-open convention:
+        // a negative initialization-fail-timeout makes the pool start immediately and
+        // connect lazily, so an unreachable MySQL at boot can neither block nor fail
+        // proxy startup. A proxy must not be taken down by a database that is merely
+        // slow to come up; ongoing write failures are still caught and retried.
         hc.setInitializationFailTimeout(-1);
+
+        // HikariCP's recommended Connector/J property bag (mc_dev PERSISTENCE.md §8).
+        // rewriteBatchedStatements collapses the per-server executeBatch() into one
+        // multi-row statement; cachePrepStmts is the master switch for the rest.
+        hc.addDataSourceProperty("cachePrepStmts", "true");
+        hc.addDataSourceProperty("prepStmtCacheSize", "250");
+        hc.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        hc.addDataSourceProperty("useServerPrepStmts", "true");
+        hc.addDataSourceProperty("useLocalSessionState", "true");
+        hc.addDataSourceProperty("rewriteBatchedStatements", "true");
+        hc.addDataSourceProperty("cacheResultSetMetadata", "true");
+        hc.addDataSourceProperty("cacheServerConfiguration", "true");
+        hc.addDataSourceProperty("elideSetAutoCommits", "true");
+        hc.addDataSourceProperty("maintainTimeStats", "false");
 
         this.dataSource = new HikariDataSource(hc);
     }
 
     private static String buildJdbcUrl(PluginConfig c) {
+        // The performance property bag rides on the Hikari pool (see the constructor),
+        // matching the house convention; the URL carries only how to reach and secure
+        // the connection, plus bounded connect/socket timeouts so a wedged network
+        // link can never hang a write indefinitely.
         return "jdbc:mysql://" + c.host() + ":" + c.port() + "/" + c.database()
                 + "?useSSL=" + c.useSsl()
                 // Required for caching_sha2_password auth over a plaintext connection.
                 + "&allowPublicKeyRetrieval=" + (!c.useSsl())
-                + "&characterEncoding=utf8"
-                + "&connectTimeout=10000"
+                + "&connectTimeout=" + c.connectionTimeoutMs()
                 + "&socketTimeout=15000";
     }
 
@@ -128,14 +147,11 @@ final class Database implements AutoCloseable {
     }
 
     private void upsertNetwork(Connection conn, int total) throws SQLException {
-        // Bind the count twice (insert value + update value) rather than using
-        // the deprecated VALUES() function, keeping the statement portable.
         String sql = "INSERT INTO `" + networkTable + "` (id, total, updated_at) "
                 + "VALUES (1, ?, CURRENT_TIMESTAMP) "
-                + "ON DUPLICATE KEY UPDATE total = ?, updated_at = CURRENT_TIMESTAMP";
+                + "ON DUPLICATE KEY UPDATE total = VALUES(total), updated_at = CURRENT_TIMESTAMP";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, total);
-            ps.setInt(2, total);
             ps.executeUpdate();
         }
     }
@@ -146,12 +162,11 @@ final class Database implements AutoCloseable {
         }
         String sql = "INSERT INTO `" + serversTable + "` (server, players, updated_at) "
                 + "VALUES (?, ?, CURRENT_TIMESTAMP) "
-                + "ON DUPLICATE KEY UPDATE players = ?, updated_at = CURRENT_TIMESTAMP";
+                + "ON DUPLICATE KEY UPDATE players = VALUES(players), updated_at = CURRENT_TIMESTAMP";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (Map.Entry<String, Integer> entry : perServer.entrySet()) {
                 ps.setString(1, entry.getKey());
                 ps.setInt(2, entry.getValue());
-                ps.setInt(3, entry.getValue());
                 ps.addBatch();
             }
             ps.executeBatch();

@@ -37,7 +37,8 @@ class PluginConfigTest {
                 mysql-use-ssl=true
                 poll-interval-seconds=15
                 table-prefix=site_
-                pool-max-size=4
+                pool-size=4
+                connection-timeout-ms=20000
                 """);
 
         PluginConfig config = PluginConfig.load(dir);
@@ -50,7 +51,8 @@ class PluginConfigTest {
         assertTrue(config.useSsl());
         assertEquals(15, config.intervalSeconds());
         assertEquals("site_", config.tablePrefix());
-        assertEquals(4, config.poolMaxSize());
+        assertEquals(4, config.poolSize());
+        assertEquals(20000, config.connectionTimeoutMs());
     }
 
     @Test
@@ -74,13 +76,15 @@ class PluginConfigTest {
     void clampsIntervalAndPoolToSafeMinimums(@TempDir Path dir) throws IOException {
         write(dir, """
                 poll-interval-seconds=1
-                pool-max-size=0
+                pool-size=0
+                connection-timeout-ms=10
                 """);
 
         PluginConfig config = PluginConfig.load(dir);
 
         assertEquals(5, config.intervalSeconds());
-        assertEquals(1, config.poolMaxSize());
+        assertEquals(1, config.poolSize());
+        assertEquals(1000, config.connectionTimeoutMs());
     }
 
     @Test

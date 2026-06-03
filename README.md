@@ -69,7 +69,8 @@ A restart is only needed to pick up **config changes** or a **new plugin jar**.
 | `mysql-use-ssl` | `false` | Set `true` if your server requires TLS |
 | `poll-interval-seconds` | `30` | How often to write counts (minimum 5) |
 | `table-prefix` | `playercount_` | Prefix for the two tables (sanitised to `[A-Za-z0-9_]`) |
-| `pool-max-size` | `2` | JDBC connection-pool size |
+| `pool-size` | `2` | JDBC connection-pool size |
+| `connection-timeout-ms` | `10000` | Wait for a DB connection before giving up a write (minimum 1000) |
 
 The database named by `mysql-database` must exist; the **tables** are created
 automatically. The MySQL user needs `CREATE`, `INSERT`, `UPDATE`, `DELETE`, and

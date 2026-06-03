@@ -25,7 +25,8 @@ final class PluginConfig {
     private final boolean useSsl;
     private final int intervalSeconds;
     private final String tablePrefix;
-    private final int poolMaxSize;
+    private final int poolSize;
+    private final int connectionTimeoutMs;
 
     private PluginConfig(Properties p) {
         this.host = p.getProperty("mysql-host", "localhost").trim();
@@ -36,7 +37,8 @@ final class PluginConfig {
         this.useSsl = Boolean.parseBoolean(p.getProperty("mysql-use-ssl", "false").trim());
         this.intervalSeconds = Math.max(5, parseInt(p.getProperty("poll-interval-seconds", "30"), 30));
         this.tablePrefix = sanitizeIdentifier(p.getProperty("table-prefix", "playercount_"), "playercount_");
-        this.poolMaxSize = Math.max(1, parseInt(p.getProperty("pool-max-size", "2"), 2));
+        this.poolSize = Math.max(1, parseInt(p.getProperty("pool-size", "2"), 2));
+        this.connectionTimeoutMs = Math.max(1000, parseInt(p.getProperty("connection-timeout-ms", "10000"), 10000));
     }
 
     /**
@@ -94,8 +96,12 @@ final class PluginConfig {
         return tablePrefix;
     }
 
-    int poolMaxSize() {
-        return poolMaxSize;
+    int poolSize() {
+        return poolSize;
+    }
+
+    int connectionTimeoutMs() {
+        return connectionTimeoutMs;
     }
 
     private static int parseInt(String value, int fallback) {
@@ -143,6 +149,9 @@ final class PluginConfig {
             # Only letters, digits and underscore are kept from this value.
             table-prefix=playercount_
             # JDBC connection-pool size. 2 is plenty for periodic writes.
-            pool-max-size=2
+            pool-size=2
+            # How long (ms) to wait for a database connection before giving up a
+            # write (it retries next interval). Minimum 1000.
+            connection-timeout-ms=10000
             """;
 }
