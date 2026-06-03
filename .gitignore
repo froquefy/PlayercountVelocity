@@ -1,0 +1,18 @@
+# Gradle build output
+/build/
+/.gradle/
+
+# Local dev proxy: downloaded Velocity jar, generated config, logs
+/run/
+
+# Read-only API source clones (re-clone with git as needed)
+/references/
+
+# IDE
+/.idea/
+*.iml
+/.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
