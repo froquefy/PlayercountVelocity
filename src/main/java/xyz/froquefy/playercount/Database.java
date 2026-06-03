@@ -1,4 +1,4 @@
-package com.froquefy.playercount;
+package xyz.froquefy.playercount;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;

@@ -1,4 +1,4 @@
-package com.froquefy.playercount;
+package xyz.froquefy.playercount;
 
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;

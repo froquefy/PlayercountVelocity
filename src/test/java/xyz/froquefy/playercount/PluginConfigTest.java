@@ -1,4 +1,4 @@
-package com.froquefy.playercount;
+package xyz.froquefy.playercount;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

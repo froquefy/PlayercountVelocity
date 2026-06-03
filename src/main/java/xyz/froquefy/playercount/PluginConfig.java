@@ -1,4 +1,4 @@
-package com.froquefy.playercount;
+package xyz.froquefy.playercount;
 
 import java.io.IOException;
 import java.io.InputStream;

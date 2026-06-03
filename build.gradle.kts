@@ -3,7 +3,7 @@ plugins {
     id("com.gradleup.shadow") version "9.4.1"
 }
 
-group = "com.froquefy"
+group = "xyz.froquefy"
 version = "1.0.0"
 
 repositories {
