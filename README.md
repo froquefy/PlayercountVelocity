@@ -23,7 +23,7 @@ There is **one table**:
 
 | Table | Rows | Columns |
 | --- | --- | --- |
-| `<prefix>players` | one per online player | `id`, `nick`, `server` |
+| `<prefix>players` | one per online player | `nick` (primary key), `server` |
 
 Default `<prefix>` is `playercount_`, so the table is `playercount_players`. The plugin
 creates it automatically on first successful write — you don't run any SQL by hand.
@@ -136,11 +136,14 @@ Notes:
 
 ```sql
 CREATE TABLE playercount_players (
-    id     INT         NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    nick   VARCHAR(32) NOT NULL UNIQUE,   -- one row per online player
-    server VARCHAR(64) NOT NULL           -- backend name from velocity.toml
+    nick   VARCHAR(32) NOT NULL PRIMARY KEY,  -- one row per online player
+    server VARCHAR(64) NOT NULL               -- backend name from velocity.toml
 );
 ```
+
+There is deliberately **no surrogate `id` column**: a player is online only once, so
+`nick` is the natural key, and rows are ephemeral (deleted on quit) so an auto-increment
+would climb forever and eventually exhaust under heavy join/leave churn.
 
 ## Building
 

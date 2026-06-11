@@ -20,9 +20,9 @@ import java.util.concurrent.TimeUnit;
  * <p>One table is kept, holding exactly the players currently online somewhere on
  * the network:
  * <ul>
- *   <li>{@code <prefix>players} — one row per online player: an auto-increment
- *       {@code id}, the player's {@code nick}, and the {@code server} (backend) they
- *       are on. A player who disconnects is deleted; counts are derived downstream
+ *   <li>{@code <prefix>players} — one row per online player, keyed by {@code nick}
+ *       (a player is online only once), with the {@code server} (backend) they are on.
+ *       A player who disconnects is deleted; counts are derived downstream
  *       (e.g. {@code COUNT(*)} globally, {@code GROUP BY server} per backend).</li>
  * </ul>
  *
@@ -203,11 +203,12 @@ final class Database implements AutoCloseable {
             return;
         }
         try (Statement st = conn.createStatement()) {
-            // nick is UNIQUE: a player can be online only once, so it doubles as the
-            // upsert key. VARCHAR(32) leaves headroom for Geyser/Bedrock prefixed names.
+            // nick is the primary key: a player is online only once, so it uniquely
+            // identifies a row and doubles as the upsert key. No surrogate id — rows are
+            // ephemeral (deleted on quit), so an auto-increment would only climb forever
+            // and eventually exhaust. VARCHAR(32) leaves headroom for Geyser/Bedrock names.
             st.executeUpdate("CREATE TABLE IF NOT EXISTS `" + playersTable + "` ("
-                    + "id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, "
-                    + "nick VARCHAR(32) NOT NULL UNIQUE, "
+                    + "nick VARCHAR(32) NOT NULL PRIMARY KEY, "
                     + "server VARCHAR(64) NOT NULL"
                     + ")");
         }

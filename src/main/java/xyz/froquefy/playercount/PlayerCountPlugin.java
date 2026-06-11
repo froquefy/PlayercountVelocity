@@ -36,7 +36,7 @@ import java.util.Map;
 @Plugin(
         id = "playercount",
         name = "PlayerCount",
-        version = "2.0.0",
+        version = "3.0.0",
         description = "Records the live online player list (nick + backend server) to MySQL for website use.",
         authors = {"froquefy"}
 )
