@@ -35,7 +35,10 @@ final class PluginConfig {
         this.username = p.getProperty("mysql-username", "root").trim();
         this.password = p.getProperty("mysql-password", "");
         this.useSsl = Boolean.parseBoolean(p.getProperty("mysql-use-ssl", "false").trim());
-        this.intervalSeconds = Math.max(5, parseInt(p.getProperty("poll-interval-seconds", "30"), 30));
+        // Renamed from poll-interval-seconds (which it still reads as a fallback): with
+        // the event-driven model this is the safety-net full-reconcile cadence, not a poll.
+        this.intervalSeconds = Math.max(5, parseInt(
+                p.getProperty("reconcile-interval-seconds", p.getProperty("poll-interval-seconds", "30")), 30));
         this.tablePrefix = sanitizeIdentifier(p.getProperty("table-prefix", "playercount_"), "playercount_");
         this.poolSize = Math.max(1, parseInt(p.getProperty("pool-size", "2"), 2));
         this.connectionTimeoutMs = Math.max(1000, parseInt(p.getProperty("connection-timeout-ms", "10000"), 10000));
@@ -124,14 +127,15 @@ final class PluginConfig {
 
     private static final String DEFAULT_TEMPLATE = """
             # ============================================================
-            #  PlayerCount  -  live network player counts  ->  MySQL
+            #  PlayerCount  -  live online player list  ->  MySQL
             # ============================================================
-            # Edit the values below, then restart the proxy to apply them.
+            # Edit the values below, then run  /playercount reload  in the
+            # proxy console (or restart) to apply them.
             #
             # A missing or unreachable database NEVER stops the proxy from
-            # starting and never crashes it: counts simply aren't recorded
-            # until MySQL is reachable again, at which point recording
-            # resumes on its own with no restart needed.
+            # starting and never crashes it: the player list simply isn't
+            # recorded until MySQL is reachable again, at which point
+            # recording resumes on its own with no restart needed.
 
             # --- MySQL connection ---
             mysql-host=localhost
@@ -143,15 +147,18 @@ final class PluginConfig {
             mysql-use-ssl=false
 
             # --- Behaviour ---
-            # How often (in seconds) to write counts. Minimum 5.
-            poll-interval-seconds=30
-            # Tables used / created:  <prefix>network  and  <prefix>servers
+            # The player list is updated instantly on join / server-switch /
+            # quit. This is only the safety-net interval (seconds) for a full
+            # reconcile against the proxy's live player list, which repairs any
+            # drift if MySQL was briefly down. Minimum 5.
+            reconcile-interval-seconds=30
+            # Table used / created:  <prefix>players
             # Only letters, digits and underscore are kept from this value.
             table-prefix=playercount_
-            # JDBC connection-pool size. 2 is plenty for periodic writes.
+            # JDBC connection-pool size. 2 is plenty for this write pattern.
             pool-size=2
             # How long (ms) to wait for a database connection before giving up a
-            # write (it retries next interval). Minimum 1000.
+            # write (the next event or reconcile retries). Minimum 1000.
             connection-timeout-ms=10000
             """;
 }

@@ -35,7 +35,7 @@ class PluginConfigTest {
                 mysql-username=app
                 mysql-password=s3cret
                 mysql-use-ssl=true
-                poll-interval-seconds=15
+                reconcile-interval-seconds=15
                 table-prefix=site_
                 pool-size=4
                 connection-timeout-ms=20000
@@ -75,7 +75,7 @@ class PluginConfigTest {
     @Test
     void clampsIntervalAndPoolToSafeMinimums(@TempDir Path dir) throws IOException {
         write(dir, """
-                poll-interval-seconds=1
+                reconcile-interval-seconds=1
                 pool-size=0
                 connection-timeout-ms=10
                 """);
@@ -85,6 +85,14 @@ class PluginConfigTest {
         assertEquals(5, config.intervalSeconds());
         assertEquals(1, config.poolSize());
         assertEquals(1000, config.connectionTimeoutMs());
+    }
+
+    @Test
+    void readsLegacyPollIntervalKeyAsFallback(@TempDir Path dir) throws IOException {
+        // Configs written by 1.x used poll-interval-seconds; it still applies.
+        write(dir, "poll-interval-seconds=45\n");
+
+        assertEquals(45, PluginConfig.load(dir).intervalSeconds());
     }
 
     @Test
