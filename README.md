@@ -6,8 +6,7 @@ an external consumer (a website, dashboard, Discord bot, …) can read the live 
 straight from the database and compute whatever counts it needs.
 
 The data comes from the proxy's own in-memory state (the same data `/glist` shows),
-so **no backend (Paper/Spigot) plugins are required** — install it on the proxy and
-you're done.
+so **no backend (Paper/Spigot) plugins are required**.
 
 ## How it works
 
